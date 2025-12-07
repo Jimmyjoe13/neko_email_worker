@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neko Webmail - Interface de gestion</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; }
+        .tabs {
+            display: flex;
+            background: #f7f7f7;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+        }
+        .tab:hover { background: #e8e8e8; }
+        .tab.active {
+            background: white;
+            border-bottom: 3px solid #667eea;
+            font-weight: bold;
+        }
+        .content {
+            padding: 30px;
+        }
+        .login-form, .send-form {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border 0.3s;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .form-group textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .email-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .email-item {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .email-item:hover { background: #f7f7f7; }
+        .email-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .email-from {
+            font-weight: 600;
+            color: #667eea;
+        }
+        .email-date {
+            color: #999;
+            font-size: 14px;
+        }
+        .email-subject {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .email-preview {
+            color: #666;
+            font-size: 14px;
+        }
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="header">
+                <h1>📧 Neko Webmail</h1>
+                <p>Interface de gestion pour nana-intelligence.fr</p>
+            </div>
+
+            <div v-if="!isLoggedIn" class="content">
+                <div class="login-form">
+                    <h2 style="text-align: center; margin-bottom: 30px;">Connexion</h2>
+                    <div v-if="message" :class="['alert', messageType === 'success' ? 'alert-success' : 'alert-error']">
+                        {{ message }}
+                    </div>
+                    <div class="form-group">
+                        <label>Adresse email</label>
+                        <input v-model="loginEmail" type="email" placeholder="admin@nana-intelligence.fr" @keyup.enter="login">
+                    </div>
+                    <div class="form-group">
+                        <label>Mot de passe</label>
+                        <input v-model="loginPassword" type="password" placeholder="••••••••" @keyup.enter="login">
+                    </div>
+                    <button @click="login" :disabled="loading" class="btn" style="width: 100%;">
+                        {{ loading ? 'Connexion...' : 'Se connecter' }}
+                    </button>
+                </div>
+            </div>
+
+            <div v-else>
+                <div class="tabs">
+                    <button class="tab" :class="{ active: activeTab === 'inbox' }" @click="activeTab = 'inbox'; loadEmails()">
+                        📥 Boîte de réception
+                    </button>
+                    <button class="tab" :class="{ active: activeTab === 'compose' }" @click="activeTab = 'compose'">
+                        ✍️ Nouveau message
+                    </button>
+                    <button class="tab" @click="logout">
+                        🚪 Déconnexion
+                    </button>
+                </div>
+
+                <div class="content">
+                    <!-- Boîte de réception -->
+                    <div v-if="activeTab === 'inbox'">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2>Mes emails</h2>
+                            <button @click="loadEmails" class="btn">🔄 Actualiser</button>
+                        </div>
+
+                        <div v-if="loading" class="loading">
+                            <p>Chargement des emails...</p>
+                        </div>
+
+                        <div v-else-if="emails.length === 0" class="empty-state">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <h3>Aucun email</h3>
+                            <p>Votre boîte de réception est vide</p>
+                        </div>
+
+                        <div v-else class="email-list">
+                            <div v-for="email in emails" :key="email.id" class="email-item" @click="viewEmail(email)">
+                                <div class="email-header">
+                                    <span class="email-from">{{ email.sender }}</span>
+                                    <span class="email-date">{{ formatDate(email.timestamp) }}</span>
+                                </div>
+                                <div class="email-subject">{{ email.subject || '(Pas de sujet)' }}</div>
+                                <div class="email-preview">{{ truncate(email.body, 100) }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Composer un email -->
+                    <div v-if="activeTab === 'compose'">
+                        <h2 style="margin-bottom: 30px;">Nouveau message</h2>
+                        <div v-if="message" :class="['alert', messageType === 'success' ? 'alert-success' : 'alert-error']">
+                            {{ message }}
+                        </div>
+                        <div class="send-form">
+                            <div class="form-group">
+                                <label>Destinataire</label>
+                                <input v-model="newEmail.to" type="email" placeholder="destinataire@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label>Sujet</label>
+                                <input v-model="newEmail.subject" type="text" placeholder="Objet du message">
+                            </div>
+                            <div class="form-group">
+                                <label>Message</label>
+                                <textarea v-model="newEmail.body" placeholder="Votre message..."></textarea>
+                            </div>
+                            <button @click="sendEmail" :disabled="loading" class="btn" style="width: 100%;">
+                                {{ loading ? 'Envoi...' : '📤 Envoyer' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    apiUrl: 'https://email-sender.jimmygay13180.workers.dev/v1',
+                    isLoggedIn: false,
+                    userToken: '',
+                    userEmail: '',
+                    loginEmail: 'admin@nana-intelligence.fr',
+                    loginPassword: '',
+                    activeTab: 'inbox',
+                    emails: [],
+                    newEmail: {
+                        to: '',
+                        subject: '',
+                        body: ''
+                    },
+                    message: '',
+                    messageType: '',
+                    loading: false
+                }
+            },
+            methods: {
+                async login() {
+                    this.loading = true;
+                    this.message = '';
+                    try {
+                        const response = await axios.get(
+                            `${this.apiUrl}/users/${this.loginEmail}/password`,
+                            {
+                                headers: {
+                                    'Password': this.loginPassword
+                                }
+                            }
+                        );
+        
+                        if (response.data.stat === 200) {
+                            this.isLoggedIn = true;
+                            this.userEmail = this.loginEmail;
+                            this.userToken = response.data.token;
+                            this.loadEmails();
+                        } else {
+                            this.message = 'Email ou mot de passe incorrect';
+                            this.messageType = 'error';
+                        }
+                    } catch (error) {
+                        this.message = 'Erreur de connexion. Vérifiez vos identifiants.';
+                        this.messageType = 'error';
+                    }
+                    this.loading = false;
+                },
+
+                
+                async loadEmails() {
+                    this.loading = true;
+                    try {
+                        const response = await axios.get(
+                            `${this.apiUrl}/mail`,
+                            {
+                                headers: {
+                                    'Token': this.userToken
+                                }
+                            }
+                        );
+        
+                        if (response.data.stat === 200) {
+                            this.emails = response.data.data.mails || [];
+                        }
+                    } catch (error) {
+                        console.error('Erreur chargement emails:', error);
+                    }
+                    this.loading = false;
+                },
+                
+                async sendEmail() {
+                    if (!this.newEmail.to || !this.newEmail.body) {
+                        this.message = 'Veuillez remplir le destinataire et le message';
+                        this.messageType = 'error';
+                        return;
+                    }
+                    
+                    this.loading = true;
+                    this.message = '';
+                    try {
+                        const response = await axios.post(
+                            `${this.apiUrl}/mail`,
+                            {
+                                to: this.newEmail.to,
+                                subject: this.newEmail.subject,
+                                body: this.newEmail.body
+                            },
+                            {
+                                headers: {
+                                    'Authorization': `Bearer ${this.userToken}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            }
+                        );
+                        
+                        if (response.data.stat === 200) {
+                            this.message = 'Email envoyé avec succès !';
+                            this.messageType = 'success';
+                            this.newEmail = { to: '', subject: '', body: '' };
+                        } else {
+                            this.message = 'Erreur lors de l\'envoi';
+                            this.messageType = 'error';
+                        }
+                    } catch (error) {
+                        this.message = 'Erreur lors de l\'envoi de l\'email';
+                        this.messageType = 'error';
+                    }
+                    this.loading = false;
+                },
+                
+                logout() {
+                    this.isLoggedIn = false;
+                    this.userToken = '';
+                    this.userEmail = '';
+                    this.loginPassword = '';
+                    this.emails = [];
+                },
+                
+                viewEmail(email) {
+                    alert(`De: ${email.sender}\nSujet: ${email.subject}\n\n${email.body}`);
+                },
+                
+                formatDate(timestamp) {
+                    const date = new Date(timestamp * 1000);
+                    return date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR');
+                },
+                
+                truncate(text, length) {
+                    if (!text) return '';
+                    return text.length > length ? text.substring(0, length) + '...' : text;
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
