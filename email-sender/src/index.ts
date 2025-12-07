@@ -36,7 +36,7 @@ export default {
 				headers: {
 					"Access-Control-Allow-Origin": "*",
 					"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-					"Access-Control-Allow-Headers": "Content-Type, Authorization",
+					"Access-Control-Allow-Headers": "Content-Type, Authorization, Password, Token, Oldpass, Newpass, Admin",
 					"Access-Control-Max-Age": "86400",
 				}
 			});
@@ -47,7 +47,7 @@ export default {
 			const newHeaders = new Headers(response.headers);
 			newHeaders.set("Access-Control-Allow-Origin", "*");
 			newHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-			newHeaders.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+			newHeaders.set("Access-Control-Allow-Headers", "Content-Type, Authorization, Password, Token, Oldpass, Newpass, Admin");
 			return new Response(response.body, {
 				status: response.status,
 				statusText: response.statusText,
