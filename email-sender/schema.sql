@@ -4,11 +4,15 @@ create table if not exists users (
     password text not null,
     token text not null
 );
+insert into users (username, password, token) 
+    values ('admin@nana-intelligence.fr', 'Jim13180@', 'eliana-gay-241217');
 
-drop table if exists meta;
-create table if not exists meta (
-    token text primary key,
-    is_admin boolean not null default 0,
-    mail_num integer not null default 0,
-    mail_size integer not null default 0
+drop table if exists emails;
+create table if not exists emails (
+    id integer primary key autoincrement,
+    sender text not null,
+    receiver text not null,
+    subject text,
+    body text,
+    timestamp integer not null
 );
